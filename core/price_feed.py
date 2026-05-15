@@ -42,7 +42,12 @@ class PriceFeed:
                 raw = message.strip()
                 if not raw:
                     continue
-                await self._handle_message(json.loads(raw))
+                parsed = json.loads(raw)
+                if isinstance(parsed, list):
+                    for item in parsed:
+                        await self._handle_message(item)
+                elif isinstance(parsed, dict):
+                    await self._handle_message(parsed)
 
     async def _handle_message(self, data: dict) -> None:
         token_id = data.get("asset_id") or data.get("token_id")
