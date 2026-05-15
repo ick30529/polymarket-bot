@@ -1,16 +1,17 @@
 import aiosqlite
-from datetime import date
 from pathlib import Path
 
 SCHEMA_PATH = Path(__file__).parent / "schema.sql"
+_SCHEMA = SCHEMA_PATH.read_text()
+
+ALLOWED_TRADE_FIELDS = {"status", "exit_price", "realized_pnl", "closed_at", "order_id"}
 
 
 async def init_db(db_path: str) -> aiosqlite.Connection:
     db = await aiosqlite.connect(db_path)
     db.row_factory = aiosqlite.Row
     await db.execute("PRAGMA journal_mode=WAL")
-    schema = SCHEMA_PATH.read_text()
-    await db.executescript(schema)
+    await db.executescript(_SCHEMA)
     await db.commit()
     return db
 
@@ -28,6 +29,11 @@ async def insert_trade(db: aiosqlite.Connection, strategy: str, market_id: str,
 
 
 async def update_trade(db: aiosqlite.Connection, trade_id: int, **kwargs) -> None:
+    if not kwargs:
+        return
+    bad = set(kwargs) - ALLOWED_TRADE_FIELDS
+    if bad:
+        raise ValueError(f"Unknown/disallowed trade fields: {bad}")
     fields = ", ".join(f"{k} = ?" for k in kwargs)
     values = list(kwargs.values()) + [trade_id]
     await db.execute(f"UPDATE trades SET {fields} WHERE id = ?", values)
