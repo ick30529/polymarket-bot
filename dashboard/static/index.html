@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Polymarket Bot Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    body { background: #0d1117; color: #e6edf3; }
+    .card { background: #161b22; border: 1px solid #30363d; }
+    .pnl-positive { color: #3fb950; }
+    .pnl-negative { color: #f85149; }
+    .live-dot { display: inline-block; width: 8px; height: 8px; background: #3fb950; border-radius: 50%; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    table { font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <div class="container-fluid p-4">
+    <div class="d-flex align-items-center mb-4 gap-2">
+      <h4 class="mb-0">Polymarket Bot Dashboard</h4>
+      <span class="live-dot"></span>
+      <span class="text-muted small">Live</span>
+    </div>
+    <div class="row g-3 mb-4">
+      <div class="col-md-4">
+        <div class="card p-3">
+          <div class="text-muted small">Total P&amp;L</div>
+          <div id="total-pnl" class="fs-3 fw-bold">$0.00</div>
+          <div id="win-rate" class="text-muted small">Win rate: --%</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card p-3">
+          <div class="text-muted small">Scalping P&amp;L</div>
+          <div id="scalping-pnl" class="fs-3 fw-bold">$0.00</div>
+          <div id="scalping-trades" class="text-muted small">0 trades</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card p-3">
+          <div class="text-muted small">Arbitrage P&amp;L</div>
+          <div id="arb-pnl" class="fs-3 fw-bold">$0.00</div>
+          <div id="arb-trades" class="text-muted small">0 trades</div>
+        </div>
+      </div>
+    </div>
+    <div class="card p-3 mb-4">
+      <canvas id="pnl-chart" height="80"></canvas>
+    </div>
+    <ul class="nav nav-tabs mb-3" id="tabs">
+      <li class="nav-item"><a class="nav-link active" href="#" data-tab="all">Overview</a></li>
+      <li class="nav-item"><a class="nav-link" href="#" data-tab="scalping">Scalping</a></li>
+      <li class="nav-item"><a class="nav-link" href="#" data-tab="arbitrage">Arbitrage</a></li>
+    </ul>
+    <div class="card p-3 mb-4">
+      <h6 class="mb-3">Open Positions</h6>
+      <table class="table table-dark table-sm mb-0">
+        <thead><tr><th>Strategy</th><th>Market</th><th>Side</th><th>Size</th><th>Entry</th><th>Current</th></tr></thead>
+        <tbody id="positions-body"><tr><td colspan="6" class="text-muted">No open positions</td></tr></tbody>
+      </table>
+    </div>
+    <div class="card p-3">
+      <h6 class="mb-3">Recent Trades</h6>
+      <table class="table table-dark table-sm mb-0">
+        <thead><tr><th>Time</th><th>Strategy</th><th>Market</th><th>Side</th><th>Size</th><th>Entry</th><th>Exit</th><th>P&amp;L</th></tr></thead>
+        <tbody id="trades-body"><tr><td colspan="8" class="text-muted">No trades yet</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <script src="charts.js"></script>
+</body>
+</html>
