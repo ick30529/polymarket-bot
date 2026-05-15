@@ -64,8 +64,10 @@ class PriceFeed:
     async def update_subscriptions(self, token_ids: list[str]) -> None:
         new_tokens = list(set(token_ids) - self._subscribed)
         self._subscribed = set(token_ids)
-        if self._ws and new_tokens:
-            chunk_size = 50
+        if not self._ws or not new_tokens:
+            return
+        chunk_size = 50
+        try:
             for i in range(0, len(new_tokens), chunk_size):
                 chunk = new_tokens[i:i + chunk_size]
                 await self._ws.send(json.dumps({
@@ -73,6 +75,8 @@ class PriceFeed:
                     "type": "Market",
                     "id": str(i),
                 }))
+        except Exception:
+            pass  # WS closed mid-update; reconnect loop will resubscribe
 
     def stop(self) -> None:
         self._running = False
