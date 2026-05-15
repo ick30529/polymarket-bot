@@ -1,4 +1,5 @@
 import asyncio
+import json
 from dataclasses import dataclass
 
 import aiohttp
@@ -38,7 +39,12 @@ class MarketScanner:
                     if volume < volume_threshold_usd:
                         continue
                     clob_ids = item.get("clobTokenIds") or []
-                    if len(clob_ids) < 2:
+                    if isinstance(clob_ids, str):
+                        clob_ids = json.loads(clob_ids)
+                    outcomes = item.get("outcomes") or []
+                    if isinstance(outcomes, str):
+                        outcomes = json.loads(outcomes)
+                    if len(clob_ids) != 2 or len(outcomes) != 2:
                         continue
                     markets.append(Market(
                         condition_id=item.get("conditionId", ""),
