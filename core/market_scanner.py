@@ -32,9 +32,11 @@ class MarketScanner:
                 }
                 async with session.get(GAMMA_API, params=params) as resp:
                     data = await resp.json()
-                if not data:
+                if not data or not isinstance(data, list):
                     break
                 for item in data:
+                    if not isinstance(item, dict):
+                        continue
                     volume = float(item.get("volume24hr") or item.get("volume") or 0)
                     if volume < volume_threshold_usd:
                         continue
