@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import aiosqlite
 from config import Config
@@ -37,8 +38,8 @@ class OrderExecutor:
         try:
             from py_clob_client.clob_types import OrderArgs, OrderType
             order_args = OrderArgs(token_id=signal.token_id, price=price, size=size, side=signal.side)
-            signed = self._clob.create_order(order_args)
-            resp = self._clob.post_order(signed, OrderType.GTC)
+            signed = await asyncio.to_thread(self._clob.create_order, order_args)
+            resp = await asyncio.to_thread(self._clob.post_order, signed, OrderType.GTC)
             order_id = resp.get("orderID")
         except Exception as e:
             logger.error(f"Order placement failed: {e}")
@@ -63,7 +64,7 @@ class OrderExecutor:
 
     async def cancel_order(self, order_id: str) -> bool:
         try:
-            self._clob.cancel(order_id=order_id)
+            await asyncio.to_thread(self._clob.cancel, order_id=order_id)
             return True
         except Exception as e:
             logger.error(f"Cancel failed for {order_id}: {e}")
@@ -73,14 +74,16 @@ class OrderExecutor:
         exit_price = pos.get("current_price", pos["entry_price"])
         try:
             from py_clob_client.clob_types import OrderArgs, OrderType
+            exit_side = "BUY" if pos["side"] == "SELL" else "SELL"
+            exit_price_limit = (exit_price + 0.01) if exit_side == "BUY" else max(exit_price - 0.01, 0.01)
             order_args = OrderArgs(
                 token_id=pos["token_id"],
-                price=max(exit_price - 0.01, 0.01),
+                price=exit_price_limit,
                 size=pos["size"],
-                side="SELL",
+                side=exit_side,
             )
-            signed = self._clob.create_order(order_args)
-            self._clob.post_order(signed, OrderType.GTC)
+            signed = await asyncio.to_thread(self._clob.create_order, order_args)
+            await asyncio.to_thread(self._clob.post_order, signed, OrderType.GTC)
         except Exception as e:
             logger.error(f"Exit order failed for trade {trade_id}: {e}")
 

@@ -1,4 +1,5 @@
 import aiosqlite
+from datetime import datetime, timezone
 from db.database import update_trade
 
 
@@ -32,6 +33,7 @@ class PositionManager:
             status="closed",
             exit_price=exit_price,
             realized_pnl=pnl,
+            closed_at=datetime.now(timezone.utc).isoformat(),
         )
         return pnl
 

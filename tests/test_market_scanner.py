@@ -31,5 +31,5 @@ async def test_filters_inactive_markets(mock_clob):
 async def test_returns_correct_token_ids(mock_clob):
     scanner = MarketScanner()
     markets = await scanner.scan(mock_clob, volume_threshold_usd=10000.0)
-    assert markets[0].token_yes_id == "yes1"
-    assert markets[0].token_no_id == "no1"
+    assert markets[0].yes_token_id == "yes1"
+    assert markets[0].no_token_id == "no1"

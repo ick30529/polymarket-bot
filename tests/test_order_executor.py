@@ -59,3 +59,14 @@ async def test_exit_position_closes_trade(db, config, mock_clob, mock_pm, mock_r
     pos = {"trade_id": 1, "strategy": "scalping", "market_id": "m1", "token_id": "tok1", "side": "BUY", "size": 10.0, "entry_price": 0.50, "current_price": 0.55}
     await executor.exit_position(trade_id=1, pos=pos)
     mock_pm.close_position.assert_called_once_with(1, 0.55)
+
+@pytest.mark.asyncio
+async def test_exit_position_sell_gets_buy_order(db, config, mock_clob, mock_pm, mock_rm):
+    executor = OrderExecutor(mock_clob, mock_pm, mock_rm, db, config)
+    pos = {"trade_id": 2, "strategy": "scalping", "market_id": "m1", "token_id": "tok1",
+           "side": "SELL", "size": 10.0, "entry_price": 0.55, "current_price": 0.50}
+    await executor.exit_position(trade_id=2, pos=pos)
+    # exit_side should be BUY, price_limit = 0.50 + 0.01 = 0.51
+    call_args = mock_clob.create_order.call_args[0][0]
+    assert call_args.side == "BUY"
+    mock_pm.close_position.assert_called_once_with(2, 0.50)
