@@ -1,15 +1,20 @@
-import aiosqlite
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 from config import Config
+import aiosqlite
 from db.database import get_trade_history, get_performance_summary
 
 
-def create_router(db: aiosqlite.Connection, config: Config,
-                  positions_ref: list[dict]) -> APIRouter:
+def create_router_with_path(db_path: str, config: Config,
+                             positions_ref: list[dict]) -> APIRouter:
     router = APIRouter(prefix="/api")
 
+    async def get_db():
+        async with aiosqlite.connect(db_path) as db:
+            db.row_factory = aiosqlite.Row
+            yield db
+
     @router.get("/performance")
-    async def performance():
+    async def performance(db=Depends(get_db)):
         summary = await get_performance_summary(db)
         scalping = summary.get("scalping", {"pnl": 0.0, "wins": 0, "total": 0})
         arbitrage = summary.get("arbitrage", {"pnl": 0.0, "wins": 0, "total": 0})
@@ -26,6 +31,7 @@ def create_router(db: aiosqlite.Connection, config: Config,
 
     @router.get("/trades")
     async def trades(
+        db=Depends(get_db),
         strategy: str | None = Query(None),
         limit: int = Query(50, ge=1, le=500),
     ):

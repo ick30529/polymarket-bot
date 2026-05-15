@@ -136,7 +136,7 @@ async def main() -> None:
             await asyncio.sleep(2)
 
     dashboard_thread = threading.Thread(
-        target=run_dashboard, args=(db, config), daemon=True
+        target=run_dashboard, args=("polymarket.db", config, positions_ref), daemon=True
     )
     dashboard_thread.start()
     sys_logger.info(f"Dashboard running on port {config.dashboard_port}")

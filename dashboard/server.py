@@ -1,19 +1,17 @@
-import threading
-import aiosqlite
 import uvicorn
 from config import Config
-from dashboard.routes import create_router
-
-_positions: list[dict] = []
 
 
-def create_app(db: aiosqlite.Connection, config: Config, positions_ref: list[dict] | None = None):
+def create_app(db_path: str, config: Config, positions_ref: list[dict]):
+    from contextlib import asynccontextmanager
     from fastapi import FastAPI
     from fastapi.staticfiles import StaticFiles
     import os
+    from dashboard.routes import create_router_with_path
 
     app = FastAPI(title="Polymarket Bot")
-    router = create_router(db, config, positions_ref=positions_ref or _positions)
+
+    router = create_router_with_path(db_path, config, positions_ref=positions_ref)
     app.include_router(router)
 
     static_dir = os.path.join(os.path.dirname(__file__), "static")
@@ -23,6 +21,6 @@ def create_app(db: aiosqlite.Connection, config: Config, positions_ref: list[dic
     return app
 
 
-def run_dashboard(db: aiosqlite.Connection, config: Config) -> None:
-    app = create_app(db, config)
+def run_dashboard(db_path: str, config: Config, positions_ref: list[dict]) -> None:
+    app = create_app(db_path, config, positions_ref)
     uvicorn.run(app, host="0.0.0.0", port=config.dashboard_port, log_level="warning")
