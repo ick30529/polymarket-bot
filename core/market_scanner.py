@@ -1,6 +1,10 @@
 import asyncio
 from dataclasses import dataclass
 
+import aiohttp
+
+GAMMA_API = "https://gamma-api.polymarket.com/markets"
+
 
 @dataclass
 class Market:
@@ -13,24 +17,37 @@ class Market:
 
 class MarketScanner:
     async def scan(self, clob_client, volume_threshold_usd: float) -> list[Market]:
-        response = await asyncio.to_thread(clob_client.get_markets)
         markets = []
-        for item in response.get("data", []):
-            if not item.get("active"):
-                continue
-            volume = float(item.get("volume", "0"))
-            if volume < volume_threshold_usd:
-                continue
-            tokens = item.get("tokens", [])
-            yes_token = next((t for t in tokens if t["outcome"] == "Yes"), None)
-            no_token = next((t for t in tokens if t["outcome"] == "No"), None)
-            if not yes_token or not no_token:
-                continue
-            markets.append(Market(
-                condition_id=item["condition_id"],
-                event_id=item.get("event_id", ""),
-                yes_token_id=yes_token["token_id"],
-                no_token_id=no_token["token_id"],
-                volume=volume,
-            ))
+        offset = 0
+        limit = 100
+        async with aiohttp.ClientSession() as session:
+            while True:
+                params = {
+                    "active": "true",
+                    "closed": "false",
+                    "accepting_orders": "true",
+                    "limit": limit,
+                    "offset": offset,
+                }
+                async with session.get(GAMMA_API, params=params) as resp:
+                    data = await resp.json()
+                if not data:
+                    break
+                for item in data:
+                    volume = float(item.get("volume24hr") or item.get("volume") or 0)
+                    if volume < volume_threshold_usd:
+                        continue
+                    clob_ids = item.get("clobTokenIds") or []
+                    if len(clob_ids) < 2:
+                        continue
+                    markets.append(Market(
+                        condition_id=item.get("conditionId", ""),
+                        event_id=item.get("groupItemTitle", ""),
+                        yes_token_id=clob_ids[0],
+                        no_token_id=clob_ids[1],
+                        volume=volume,
+                    ))
+                if len(data) < limit:
+                    break
+                offset += limit
         return markets
