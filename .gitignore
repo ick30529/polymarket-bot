@@ -1,6 +1,6 @@
 .env
 *.db
-logging/logs/
+log_config/logs/
 __pycache__/
 *.pyc
 .pytest_cache/
