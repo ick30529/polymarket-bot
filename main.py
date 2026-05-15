@@ -142,6 +142,7 @@ async def main() -> None:
     sys_logger.info(f"Dashboard running on port {config.dashboard_port}")
 
     markets = await scanner.scan(clob_client, config.volume_threshold_usd)
+    markets = sorted(markets, key=lambda m: m.volume, reverse=True)[:50]
     token_ids = [t for m in markets for t in (m.yes_token_id, m.no_token_id)]
     sys_logger.info(f"Found {len(markets)} markets, {len(token_ids)} token feeds")
 

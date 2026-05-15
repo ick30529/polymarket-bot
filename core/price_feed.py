@@ -26,12 +26,23 @@ class PriceFeed:
                 await asyncio.sleep(5)
 
     async def _connect_and_stream(self) -> None:
-        async with websockets.connect(WS_URL) as ws:
+        async with websockets.connect(WS_URL, ping_interval=20, ping_timeout=30) as ws:
             self._ws = ws
-            for token_id in self._subscribed:
-                await ws.send(json.dumps({"type": "subscribe", "channel": "market", "market": token_id}))
+            token_list = list(self._subscribed)
+            # Batch in chunks of 50 to stay within server limits
+            chunk_size = 50
+            for i in range(0, len(token_list), chunk_size):
+                chunk = token_list[i:i + chunk_size]
+                await ws.send(json.dumps({
+                    "assets_ids": chunk,
+                    "type": "Market",
+                    "id": str(i),
+                }))
             async for message in ws:
-                await self._handle_message(json.loads(message))
+                raw = message.strip()
+                if not raw:
+                    continue
+                await self._handle_message(json.loads(raw))
 
     async def _handle_message(self, data: dict) -> None:
         token_id = data.get("asset_id") or data.get("token_id")
@@ -51,11 +62,17 @@ class PriceFeed:
         await self._bus.publish(event)
 
     async def update_subscriptions(self, token_ids: list[str]) -> None:
-        new_tokens = set(token_ids) - self._subscribed
+        new_tokens = list(set(token_ids) - self._subscribed)
         self._subscribed = set(token_ids)
         if self._ws and new_tokens:
-            for token_id in new_tokens:
-                await self._ws.send(json.dumps({"type": "subscribe", "channel": "market", "market": token_id}))
+            chunk_size = 50
+            for i in range(0, len(new_tokens), chunk_size):
+                chunk = new_tokens[i:i + chunk_size]
+                await self._ws.send(json.dumps({
+                    "assets_ids": chunk,
+                    "type": "Market",
+                    "id": str(i),
+                }))
 
     def stop(self) -> None:
         self._running = False
