@@ -3,8 +3,7 @@ from config import Config
 from core.event_bus import OrderbookEvent, SignalEvent
 from strategies.base_strategy import BaseStrategy
 
-MOMENTUM_WINDOW = 10
-MOMENTUM_THRESHOLD = 0.003
+MOMENTUM_WINDOW = 5
 
 
 class ScalpingStrategy(BaseStrategy):
@@ -20,6 +19,9 @@ class ScalpingStrategy(BaseStrategy):
 
         best_bid = event.bids[0][0]
         best_ask = event.asks[0][0]
+        if best_bid <= 0 or best_ask <= 0 or best_ask <= best_bid:
+            return None
+
         mid = (best_bid + best_ask) / 2
         spread_pct = (best_ask - best_bid) / mid * 100
 
@@ -29,14 +31,13 @@ class ScalpingStrategy(BaseStrategy):
         if spread_pct < self._config.min_spread_pct:
             return None
 
-        if len(history) < MOMENTUM_WINDOW:
-            return None
+        # Direction: buy the ask side when recent ticks are rising, sell when falling
+        if len(history) >= 2:
+            net_move = history[-1] - history[0]
+            side = "BUY" if net_move >= 0 else "SELL"
+        else:
+            side = "BUY"
 
-        net_move = history[-1] - history[0]
-        if abs(net_move) < MOMENTUM_THRESHOLD:
-            return None
-
-        side = "BUY" if net_move > 0 else "SELL"
         implied_prob = best_ask if side == "BUY" else (1.0 - best_bid)
         estimated_prob = implied_prob + (self._config.min_spread_pct / 200)
 
