@@ -39,13 +39,19 @@ class PriceFeed:
                     "id": str(i),
                 }))
             async for message in ws:
+                if isinstance(message, bytes):
+                    message = message.decode("utf-8", errors="ignore")
                 raw = message.strip()
                 if not raw:
                     continue
-                parsed = json.loads(raw)
+                try:
+                    parsed = json.loads(raw)
+                except json.JSONDecodeError:
+                    continue
                 if isinstance(parsed, list):
                     for item in parsed:
-                        await self._handle_message(item)
+                        if isinstance(item, dict):
+                            await self._handle_message(item)
                 elif isinstance(parsed, dict):
                     await self._handle_message(parsed)
 
