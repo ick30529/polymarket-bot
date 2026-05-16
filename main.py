@@ -33,13 +33,17 @@ async def strategy_loop(event_bus: EventBus, scalping: ScalpingStrategy,
 
 
 async def scanner_loop(clob_client, scanner: MarketScanner, price_feed: PriceFeed,
-                       arbitrage: ArbitrageStrategy, volume_threshold: float) -> None:
+                       arbitrage: ArbitrageStrategy, volume_threshold: float,
+                       neg_risk_map: dict) -> None:
     while True:
         markets = await scanner.scan(clob_client, volume_threshold)
+        markets = sorted(markets, key=lambda m: m.volume, reverse=True)[:200]
         token_ids = []
         market_map = {}
         for m in markets:
             token_ids += [m.yes_token_id, m.no_token_id]
+            neg_risk_map[m.yes_token_id] = m.neg_risk
+            neg_risk_map[m.no_token_id] = m.neg_risk
             market_map[m.condition_id] = {
                 "yes_token_id": m.yes_token_id,
                 "no_token_id": m.no_token_id,
@@ -123,7 +127,8 @@ async def main() -> None:
     risk_manager = RiskManager(config=config, db=db)
     scalping = ScalpingStrategy(config=config)
     arbitrage = ArbitrageStrategy(config=config, market_map={})
-    order_executor = OrderExecutor(clob_client, position_manager, risk_manager, db, config)
+    neg_risk_map: dict[str, bool] = {}
+    order_executor = OrderExecutor(clob_client, position_manager, risk_manager, db, config, neg_risk_map)
     scanner = MarketScanner()
     price_feed = PriceFeed(event_bus=event_bus)
 
@@ -143,13 +148,16 @@ async def main() -> None:
 
     markets = await scanner.scan(clob_client, config.volume_threshold_usd)
     markets = sorted(markets, key=lambda m: m.volume, reverse=True)[:200]
+    for m in markets:
+        neg_risk_map[m.yes_token_id] = m.neg_risk
+        neg_risk_map[m.no_token_id] = m.neg_risk
     token_ids = [t for m in markets for t in (m.yes_token_id, m.no_token_id)]
     sys_logger.info(f"Found {len(markets)} markets, {len(token_ids)} token feeds")
 
     await asyncio.gather(
         price_feed.start(token_ids),
         strategy_loop(event_bus, scalping, arbitrage, order_executor),
-        scanner_loop(clob_client, scanner, price_feed, arbitrage, config.volume_threshold_usd),
+        scanner_loop(clob_client, scanner, price_feed, arbitrage, config.volume_threshold_usd, neg_risk_map),
         exit_monitor_loop(position_manager, order_executor, config),
         risk_monitor_loop(position_manager, risk_manager, db, config),
         sync_positions_loop(),

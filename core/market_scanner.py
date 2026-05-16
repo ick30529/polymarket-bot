@@ -14,6 +14,7 @@ class Market:
     yes_token_id: str
     no_token_id: str
     volume: float
+    neg_risk: bool = False
 
 
 class MarketScanner:
@@ -54,6 +55,7 @@ class MarketScanner:
                         yes_token_id=clob_ids[0],
                         no_token_id=clob_ids[1],
                         volume=volume,
+                        neg_risk=bool(item.get("negRisk", False)),
                     ))
                 if len(data) < limit:
                     break
